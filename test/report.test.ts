@@ -27,7 +27,14 @@ const input: ReportInput = {
     assertionMessages: ["Expected: 1"],
     stackTraces: [],
     fileReferences: ["test/app.test.ts:4:10"],
-    summaryLines: ["Test Suites: 1 failed"]
+    summaryLines: ["Test Suites: 1 failed"],
+    artifactReferences: [
+      {
+        kind: "trace",
+        path: "test-results/app/trace.zip",
+        line: "attachment #1: trace test-results/app/trace.zip"
+      }
+    ]
   },
   environment: {
     cwd: "/repo",
@@ -44,7 +51,9 @@ describe("report", () => {
   it("builds markdown and JSON reports", () => {
     expect(buildMarkdownReport(input)).toContain("# Failure Report");
     expect(buildMarkdownReport(input)).toContain("test/app.test.ts:4:10");
+    expect(buildMarkdownReport(input)).toContain("## Artifacts");
     expect(buildJsonReport(input).failures.blocks[0]?.title).toContain("FAIL");
+    expect(buildJsonReport(input).failures.artifactReferences[0]?.kind).toBe("trace");
   });
 
   it("sanitizes and truncates logs", () => {

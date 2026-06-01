@@ -152,6 +152,7 @@ The JSON report contains:
 - `mode`, `command`, `cwd`, `exitCode`, and `durationMs`
 - detected `framework`
 - extracted `failures` with blocks, assertions, stacks, file references, and summary lines
+- Playwright-style artifact references for traces, screenshots, and videos when they appear in logs
 - sanitized `environment` context including platform, Node/npm versions, package manager, git branch, git SHA, git status summary, and changed files
 - sanitized log text, truncated according to `--max-log-chars` unless `--include-full-log` is set
 

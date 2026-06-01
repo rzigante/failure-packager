@@ -1,5 +1,5 @@
 import { sanitizeLog, truncateText, uniqueStrings } from "./sanitize.js";
-import type { DetectedFramework, ExtractionResult, FailureBlock } from "./types.js";
+import type { ArtifactReference, DetectedFramework, ExtractionResult, FailureBlock } from "./types.js";
 
 interface LineRange {
   start: number;
@@ -16,6 +16,7 @@ export function extractFailures(rawLog: string, framework: DetectedFramework): E
   const assertionMessages = collectAssertionMessages(lines);
   const stackTraces = collectStackTraces(lines);
   const summaryLines = collectSummaryLines(lines);
+  const artifactReferences = collectArtifactReferences(lines);
   const blocks = collectFailureBlocks(lines, framework);
 
   return {
@@ -23,7 +24,8 @@ export function extractFailures(rawLog: string, framework: DetectedFramework): E
     assertionMessages,
     stackTraces,
     fileReferences,
-    summaryLines
+    summaryLines,
+    artifactReferences
   };
 }
 
@@ -250,6 +252,51 @@ function collectSummaryLines(lines: string[]): string[] {
       .filter((line) => patterns.some((pattern) => pattern.test(line))),
     25
   );
+}
+
+function collectArtifactReferences(lines: string[]): ArtifactReference[] {
+  const references: ArtifactReference[] = [];
+  const artifactPattern = /((?:\.{1,2}\/)?[A-Za-z0-9_@./-]+\/(?:test-results|playwright-report|artifacts|screenshots|videos)\/[A-Za-z0-9_@./-]+\.(?:zip|png|jpe?g|webm|mp4)|(?:\.{1,2}\/)?(?:test-results|playwright-report|artifacts|screenshots|videos)\/[A-Za-z0-9_@./-]+\.(?:zip|png|jpe?g|webm|mp4))/gi;
+
+  for (const line of lines) {
+    for (const match of line.matchAll(artifactPattern)) {
+      const artifactPath = match[1]?.replace(/[),.;]+$/g, "");
+      if (!artifactPath) {
+        continue;
+      }
+      references.push({
+        kind: inferArtifactKind(artifactPath, line),
+        path: artifactPath,
+        line: line.trim()
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return references
+    .filter((reference) => {
+      const key = `${reference.kind}\0${reference.path}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 50);
+}
+
+function inferArtifactKind(path: string, line: string): ArtifactReference["kind"] {
+  const value = `${path} ${line}`.toLowerCase();
+  if (value.includes("trace") || path.endsWith(".zip")) {
+    return "trace";
+  }
+  if (/\.(png|jpe?g)$/i.test(path) || value.includes("screenshot")) {
+    return "screenshot";
+  }
+  if (/\.(webm|mp4)$/i.test(path) || value.includes("video")) {
+    return "video";
+  }
+  return "attachment";
 }
 
 function trimBlankLines(lines: string[]): string[] {

@@ -90,6 +90,14 @@ export function buildMarkdownReport(input: ReportInput): string {
     });
   }
 
+  if (report.failures.artifactReferences.length > 0) {
+    lines.push("## Artifacts", "");
+    for (const artifact of report.failures.artifactReferences.slice(0, 25)) {
+      lines.push(`- ${artifact.kind}: ${inlineCode(artifact.path)}`);
+    }
+    lines.push("");
+  }
+
   lines.push("## Environment", "");
   lines.push("| Field | Value |");
   lines.push("| --- | --- |");

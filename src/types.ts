@@ -36,12 +36,19 @@ export interface FailureBlock {
   endLine: number;
 }
 
+export interface ArtifactReference {
+  kind: "trace" | "screenshot" | "video" | "attachment";
+  path: string;
+  line: string;
+}
+
 export interface ExtractionResult {
   blocks: FailureBlock[];
   assertionMessages: string[];
   stackTraces: string[];
   fileReferences: string[];
   summaryLines: string[];
+  artifactReferences: ArtifactReference[];
 }
 
 export interface GitStatusSummary {
