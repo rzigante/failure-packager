@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.1.2] - 2026-06-01
+
+### Fixed
+
+- Updated the CLI version constant so `--version` matches package releases.
+
 ## [0.1.1] - 2026-06-01
 
 ### Added
