@@ -1,0 +1,72 @@
+name: failure-packager
+description: Run a command through failure-packager and upload compact failure reports.
+
+inputs:
+  command:
+    description: Shell command to run after failure-packager's -- separator.
+    required: true
+  cwd:
+    description: Working directory for the wrapped command and generated reports.
+    default: "."
+  output:
+    description: Markdown report path relative to cwd.
+    default: failure-report.md
+  json:
+    description: JSON report path relative to cwd. Set to an empty string to skip JSON output.
+    default: failure-report.json
+  max-log-chars:
+    description: Maximum sanitized log characters included in reports.
+    default: "60000"
+  include-full-log:
+    description: Include the sanitized full captured log, capped for safety.
+    default: "false"
+  report-only:
+    description: Always exit 0 after writing reports instead of failing with the wrapped command.
+    default: "false"
+  upload-artifact:
+    description: Upload generated report files with actions/upload-artifact.
+    default: "true"
+  artifact-name:
+    description: Name for the uploaded report artifact.
+    default: failure-report
+  package-source:
+    description: npm install spec used to install failure-packager.
+    default: github:michaelko/failure-packager
+
+runs:
+  using: composite
+  steps:
+    - name: Install failure-packager
+      shell: bash
+      working-directory: ${{ inputs.cwd }}
+      run: npm install --no-save "${{ inputs.package-source }}"
+
+    - name: Run failure-packager
+      shell: bash
+      working-directory: ${{ inputs.cwd }}
+      run: |
+        set -euo pipefail
+        args=(--output "${{ inputs.output }}")
+        if [[ -n "${{ inputs.json }}" ]]; then
+          args+=(--json "${{ inputs.json }}")
+        fi
+        if [[ -n "${{ inputs.max-log-chars }}" ]]; then
+          args+=(--max-log-chars "${{ inputs.max-log-chars }}")
+        fi
+        if [[ "${{ inputs.include-full-log }}" == "true" ]]; then
+          args+=(--include-full-log)
+        fi
+        if [[ "${{ inputs.report-only }}" == "true" ]]; then
+          args+=(--report-only)
+        fi
+        npx failure-packager "${args[@]}" -- ${{ inputs.command }}
+
+    - name: Upload failure report
+      if: ${{ always() && inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.cwd }}/${{ inputs.output }}
+          ${{ inputs.cwd }}/${{ inputs.json }}
+        if-no-files-found: ignore

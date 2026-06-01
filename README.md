@@ -114,6 +114,53 @@ AssertionError: expected 2 to equal 3
 
 ## GitHub Actions
 
+Use the reusable action when you want report upload defaults without repeating the install, run, and artifact steps:
+
+```yaml
+jobs:
+  npm-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - uses: michaelko/failure-packager@main
+        with:
+          command: npm test
+```
+
+For pytest projects, keep your Python setup steps and wrap the test command:
+
+```yaml
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - uses: michaelko/failure-packager@main
+        with:
+          command: pytest
+          artifact-name: pytest-failure-report
+```
+
+By default, the action fails with the wrapped command while still uploading `failure-report.md` and `failure-report.json`. Set `report-only: "true"` when you want CI to stay green and consume the report in a later step:
+
+```yaml
+- uses: michaelko/failure-packager@main
+  with:
+    command: npm test
+    report-only: "true"
+```
+
+The manual workflow shape is still useful when you need full control:
+
 ```yaml
 name: test
 
@@ -132,7 +179,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm install --no-save github:michaelko/failure-packager
       - run: npx failure-packager --output failure-report.md --json failure-report.json -- npm test
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -143,7 +189,7 @@ jobs:
             failure-report.json
 ```
 
-For jobs that should continue after tests fail, use `--report-only` and inspect the JSON report in a later step.
+For manual jobs that should continue after tests fail, use `--report-only` and inspect the JSON report in a later step.
 
 ## JSON Output
 

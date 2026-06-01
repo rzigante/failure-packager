@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  npm-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -15,11 +15,20 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx failure-packager --output failure-report.md --json failure-report.json -- npm test
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - uses: michaelko/failure-packager@main
         with:
-          name: failure-report
-          path: |
-            failure-report.md
-            failure-report.json
+          command: npm test
+
+  pytest-report-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - uses: michaelko/failure-packager@main
+        with:
+          command: pytest
+          artifact-name: pytest-failure-report
+          report-only: "true"
