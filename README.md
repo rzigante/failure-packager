@@ -132,6 +132,8 @@ jobs:
           command: npm test
 ```
 
+The action installs `failure-packager` from the checked-out action ref by default, so pinned action versions run the matching CLI code. The `command` input is executed as one shell command through `failure-packager`, including shell operators such as `&&`.
+
 For pytest projects, keep your Python setup steps and wrap the test command:
 
 ```yaml

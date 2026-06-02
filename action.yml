@@ -30,8 +30,8 @@ inputs:
     description: Name for the uploaded report artifact.
     default: failure-report
   package-source:
-    description: npm install spec used to install failure-packager.
-    default: github:michaelko/failure-packager
+    description: Optional npm install spec for failure-packager. Defaults to the checked-out action ref.
+    default: ""
 
 runs:
   using: composite
@@ -39,11 +39,18 @@ runs:
     - name: Install failure-packager
       shell: bash
       working-directory: ${{ inputs.cwd }}
-      run: npm install --no-save "${{ inputs.package-source }}"
+      env:
+        FAILURE_PACKAGER_PACKAGE_SOURCE: ${{ inputs.package-source }}
+      run: |
+        set -euo pipefail
+        package_source="${FAILURE_PACKAGER_PACKAGE_SOURCE:-${{ github.action_path }}}"
+        npm install --no-save "$package_source"
 
     - name: Run failure-packager
       shell: bash
       working-directory: ${{ inputs.cwd }}
+      env:
+        FAILURE_PACKAGER_COMMAND: ${{ inputs.command }}
       run: |
         set -euo pipefail
         args=(--output "${{ inputs.output }}")
@@ -59,14 +66,27 @@ runs:
         if [[ "${{ inputs.report-only }}" == "true" ]]; then
           args+=(--report-only)
         fi
-        npx failure-packager "${args[@]}" -- ${{ inputs.command }}
+        npx failure-packager "${args[@]}" -- bash -lc "$FAILURE_PACKAGER_COMMAND"
+
+    - name: Collect failure report paths
+      if: ${{ always() && inputs.upload-artifact == 'true' }}
+      id: report-paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "paths<<EOF"
+          printf '%s\n' "${{ inputs.cwd }}/${{ inputs.output }}"
+          if [[ -n "${{ inputs.json }}" ]]; then
+            printf '%s\n' "${{ inputs.cwd }}/${{ inputs.json }}"
+          fi
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Upload failure report
       if: ${{ always() && inputs.upload-artifact == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
-        path: |
-          ${{ inputs.cwd }}/${{ inputs.output }}
-          ${{ inputs.cwd }}/${{ inputs.json }}
+        path: ${{ steps.report-paths.outputs.paths }}
         if-no-files-found: ignore
